@@ -38,25 +38,21 @@
 
 (defvar *digits* '(0 1 2 3 4 5 6 7 8 9))
 
+(defun match (seq1 seq2 start)
+  (equal seq1 (subseq seq2 start (min (length seq2)
+                                      (+ (length seq1) start)))))
+
 (defun match-digit (line start)
-  (dolist (digit (mapcan (lambda (digit)
-                           (list (format nil "~A" digit)
-                                 (format nil "~R" digit)))
-                         *digits*))
-    (when (equal digit
-                 (subseq line start (min (length line)
-                                         (+ (length digit)
-                                            start))))
+  (dolist (digit *digits*)
+    (when (or (match (format nil "~A" digit) line start)
+              (match (format nil "~R" digit) line start))
       (return-from match-digit digit))))
 
-(assert (equal (match-digit "xone" 0)
-               nil))
+(assert (equal (match-digit "xone" 0) nil))
 
-(assert (equal (match-digit "xone" 1)
-               "one"))
+(assert (equal (match-digit "xone" 1) 1))
 
-(assert (equal (match-digit "xone" 2)
-               nil))
+(assert (equal (match-digit "xone" 2) nil))
 
 (defun parse-digits (line &optional (start 0))
   (cond
@@ -69,36 +65,12 @@
            (parse-digits line (1+ start)))))))
 
 (assert (equal (parse-digits "abcone2threexyz")
-               '("one"
-                 "2"
-                 "three")))
-
-(eval-when (:compile-toplevel :load-toplevel :execute)
-  (defun word-digit-case (digit)
-    (list `(string-equal digit ,(format nil "~R" digit))
-          digit))
-  (defun char-digit-case (digit)
-    (list `(string-equal digit ,(format nil "~A" digit))
-          digit))
-
-  (defun digit-cases (digits)
-    (cond
-      ((null digits)
-       nil)
-      (t
-       (list* (char-digit-case (car digits))
-              (word-digit-case (car digits))
-              (digit-cases (cdr digits)))))))
-
-(defun coerce-digit (digit)
-  #.(cons 'cond
-          (digit-cases *digits*)))
+               '(1 2 3)))
 
 (defun make-number-2 (line)
   (let ((digits (parse-digits line)))
-    (+ (* (coerce-digit (first digits)) 10)
-       (coerce-digit (car (last digits))))))
-
+    (+ (* (first digits) 10)
+       (car (last digits)))))
 
 (assert (equal (make-number-2 "two1nine")
                29))
