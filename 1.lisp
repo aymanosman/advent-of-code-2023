@@ -31,5 +31,5 @@
 
 ;; 55172
 (defun main ()
-  (with-open-file (file "input1")
+  (with-open-file (file "input/1")
     (print (answer file))))
