@@ -1,10 +1,11 @@
+(defun char-number (char)
+  (- (char-code char) (char-code #\0)))
+
 (defun first-digit (line)
-  (parse-integer
-   (format nil "~A" (find-if #'digit-char-p line))))
+  (char-number (find-if #'digit-char-p line)))
 
 (defun last-digit (line)
-  (parse-integer
-   (format nil "~A" (find-if #'digit-char-p line :from-end t))))
+  (char-number (find-if #'digit-char-p line :from-end t)))
 
 (assert (equal (first-digit "abc7de8fg")
                7))
