@@ -73,3 +73,29 @@
 (defun part-1 ()
   (with-open-file (input "input/2")
     (print (answer-1 input))))
+
+(defun game-power (game)
+  (flet ((max-color (color sets)
+           (loop for set in sets
+                 maximize (loop for element in set
+                                when (eql color (car element))
+                                  maximize (second element)))))
+    (let ((min-set (list :red (max-color :red (game-sets game))
+                         :green (max-color :green (game-sets game))
+                         :blue (max-color :blue (game-sets game)))))
+      (* (getf min-set :red)
+         (getf min-set :green)
+         (getf min-set :blue)))))
+
+(assert (equal (game-power (parse-game-from-string "Game 1: 3 blue, 4 red; 1 red, 2 green, 6 blue; 2 green"))
+               48))
+
+(defun answer-2 (input)
+  (loop for line = (read-line input nil)
+        while line
+        for game = (parse-game-from-string line)
+        sum (game-power game)))
+
+(defun part-2 ()
+  (with-open-file (input "input/2")
+    (print (answer-2 input))))
