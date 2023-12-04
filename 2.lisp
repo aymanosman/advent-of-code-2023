@@ -70,22 +70,23 @@
         when (game-possible-p game '(:red 12 :green 13 :blue 14))
           sum (game-id game)))
 
+;; 2679
 (defun part-1 ()
   (with-open-file (input "input/2")
     (print (answer-1 input))))
 
 (defun game-power (game)
-  (flet ((max-color (color sets)
-           (loop for set in sets
-                 maximize (loop for element in set
-                                when (eql color (car element))
-                                  maximize (second element)))))
-    (let ((min-set (list :red (max-color :red (game-sets game))
-                         :green (max-color :green (game-sets game))
-                         :blue (max-color :blue (game-sets game)))))
-      (* (getf min-set :red)
-         (getf min-set :green)
-         (getf min-set :blue)))))
+  (flet ((max-color (color set)
+           (loop for element in set
+                 when (eql color (car element))
+                   maximize (second element))))
+    (multiple-value-bind (red green blue)
+        (loop for set in (game-sets game)
+              maximize (max-color :red set) into red
+              maximize (max-color :green set) into green
+              maximize (max-color :blue set) into blue
+              finally (return (values red green blue)))
+      (* red green blue))))
 
 (assert (equal (game-power (parse-game-from-string "Game 1: 3 blue, 4 red; 1 red, 2 green, 6 blue; 2 green"))
                48))
@@ -96,6 +97,7 @@
         for game = (parse-game-from-string line)
         sum (game-power game)))
 
+;; 77607
 (defun part-2 ()
   (with-open-file (input "input/2")
     (print (answer-2 input))))
