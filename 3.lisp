@@ -82,3 +82,28 @@
 (defun part-1 ()
   (with-open-file (input "input/3")
     (print (answer-1 input))))
+
+;; Part 2
+
+(defun gear-ratio (gear numbers)
+  (let ((adjacent (loop for number in numbers
+                        when (region-intersection (cdr number) (cdr gear))
+                          collect number)))
+    (ecase (length adjacent)
+      (2
+       (apply #'* (mapcar #'car adjacent)))
+      ((0 1)
+       0))))
+
+(defun answer-2 (input)
+  (multiple-value-bind (numbers symbols) (parse-regions input)
+    (let ((gears (remove #\* symbols :key #'car :test-not #'eql)))
+      (loop for gear in gears
+            sum (gear-ratio gear numbers)))))
+
+(assert (equal (answer-2 (make-string-input-stream *example*))
+               467835))
+
+(defun part-2 ()
+  (with-open-file (input "input/3")
+    (print (answer-2 input))))
