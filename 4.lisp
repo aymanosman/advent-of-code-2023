@@ -23,7 +23,7 @@ Card 6: 31 18 13 56 72 | 74 77 10 23 35 67 36 11")
 
 (defun card-value (line)
   (let* ((card (parse-card line))
-         (matches (intersection (getf card :winning) (getf card :have ))))
+         (matches (intersection (getf card :winning) (getf card :have))))
     (cond
       ((null matches)
        0)
@@ -42,3 +42,39 @@ Card 6: 31 18 13 56 72 | 74 77 10 23 35 67 36 11")
 (defun part-1 ()
   (with-open-file (input "input/4")
     (print (answer-1 input))))
+
+;; Part 2
+
+(defun hash-update (table key default function)
+  (multiple-value-bind (value present-p)
+      (gethash key table)
+    (let ((value (if present-p value default)))
+      (setf (gethash key table) (funcall function value)))))
+
+(defun answer-2 (input)
+  (let ((table (make-hash-table)))
+    (loop for line = (read-line input nil)
+          for i from 1
+          while line
+          do (let* ((card (parse-card line))
+                    (matches (intersection (getf card :winning) (getf card :have))))
+               (hash-update table i 0 #'1+)
+               (let ((copies (gethash i table)))
+                 (loop for element in matches
+                       for j from (1+ i)
+                       do (hash-update table j 0 (lambda (value)
+                                                   (+ value copies)))))))
+    (let ((sum 0))
+      (maphash (lambda (key value)
+                 (declare (ignore key))
+                 (setq sum (+ sum value)))
+               table)
+      sum)))
+
+(assert (equal (answer-2 (make-string-input-stream *example*))
+               30))
+
+;; 5923918
+(defun part-2 ()
+  (with-open-file (input "input/4")
+    (print (answer-2 input))))
