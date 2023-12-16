@@ -43,26 +43,8 @@ humidity-to-location map:
          (parts (split-string line #\:)))
     (parse-numbers (second parts))))
 
-(defun apply-clause (clause arg)
-  (destructuring-bind (dest source range) clause
-    (when (<= source arg (1- (+ source range)))
-      (+ arg (- dest source)))))
-
-(assert (equal (apply-clause '(50 98 2) 10) nil))
-(assert (equal (apply-clause '(50 98 2) 97) nil))
-(assert (equal (apply-clause '(50 98 2) 98) 50))
-(assert (equal (apply-clause '(50 98 2) 99) 51))
-(assert (equal (apply-clause '(50 98 2) 100) nil))
-
 (defun make-function (clauses)
-  (cond
-    ((null clauses)
-     #'identity)
-    (t
-     (let ((g (make-function (cdr clauses))))
-       (lambda (arg)
-         (or (apply-clause (car clauses) arg)
-             (funcall g arg)))))))
+  clauses)
 
 (defun read-chunks (input)
   (labels ((read-chunk (input)
@@ -88,8 +70,51 @@ humidity-to-location map:
 (defun read-functions (input)
   (mapcar #'make-function (read-chunks input)))
 
-(defun read-function (input)
-  (reduce #'compose (reverse (read-functions input))))
+(defun function-declarations (seed-var)
+  `(declare (optimize (speed 3) (safety 0) (debug 0))
+            (type fixnum ,seed-var)))
+
+(defun build-function (seed-var clauses &optional reverse-p)
+  (labels ((build-clause (clause)
+             (destructuring-bind (dest source range) clause
+               (multiple-value-bind (dest source) (if reverse-p
+                                                      (values source dest)
+                                                      (values dest source))
+                 `((<= ,source ,seed-var ,(1- (+ source range)))
+                   (+ ,seed-var ,(- dest source)))))))
+    `(lambda (,seed-var)
+       (cond
+         ,@(mapcar #'build-clause clauses)
+         (t ,seed-var)))))
+
+(progn
+  (assert (equal (build-function 'seed '((50 98 2)))
+                 `(lambda (seed)
+                    (cond
+                      ((<= 98 seed 99)
+                       (+ seed -48))
+                      (t
+                       seed)))))
+  (assert (equal (build-function 'seed '((50 98 2)) t)
+                 `(lambda (seed)
+                    (cond
+                      ((<= 50 seed 51)
+                       (+ seed 48))
+                      (t
+                       seed))))))
+
+(defun compile-function (clauses reverse-p)
+  (compile nil (build-function (gensym "SEED") clauses reverse-p)))
+
+(defun compile-functions (functions &optional reverse-p)
+  (reduce #'compose
+          (mapcar (lambda (function)
+                    (compile-function function reverse-p))
+                  (cond (reverse-p functions)
+                        (t (reverse functions))))))
+
+(defun read-function (input &optional reverse-p)
+  (compile-functions (read-functions input) reverse-p))
 
 (defun answer-1 (input)
   (let ((seeds (read-seeds input))
@@ -104,3 +129,48 @@ humidity-to-location map:
 (defun part-1 ()
   (with-open-file (input "input/5")
     (print (answer-1 input))))
+
+
+;; Part 2
+
+(let* ((funs (list (make-function '((50 98 2)
+                                    (52 50 48)))
+                   (make-function '((0 15 37)
+                                    (37 52 2)
+                                    (39 0 15)))))
+       (forward (compile-functions funs))
+       (backward (compile-functions funs t)))
+  (loop for i below 100
+        do (assert (equal (funcall backward (funcall forward 2))
+                          2))))
+
+(defun compile-range-function (seed-var seeds)
+  (flet ((compile-clause (cons)
+           `(<= ,(car cons) ,seed-var ,(1- (+ (car cons) (cdr cons))))))
+    `(lambda (,seed-var)
+       (or ,@(mapcar #'compile-clause (loop for (start range) on seeds by #'cddr
+                                            collect (cons start range)))))))
+
+(assert (equal (compile-range-function 'seed '(79 14 55 13))
+               `(lambda (seed)
+                  (or (<= 79 seed 92)
+                      (<= 55 seed 67)))))
+
+(defun make-range-function (seeds)
+  (compile nil (compile-range-function (gensym "SEED") seeds)))
+
+(defun answer-2 (input)
+  (let* ((seeds (read-seeds input))
+         (in-range-p (make-range-function seeds))
+         (seed-function (read-function input t)))
+    (loop for location from 0
+          until (funcall in-range-p (funcall seed-function location))
+          finally (return location))))
+
+(assert (equal (answer-2 (make-string-input-stream *example*))
+               46))
+
+;; 79874951
+(defun part-2 ()
+  (with-open-file (input "input/5")
+    (print (answer-2 input))))
